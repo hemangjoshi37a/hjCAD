@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en" class="dark">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>hjCAD - CAD File Sharing Platform</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dxf-parser/1.1.2/dxf-parser.min.js"></script>
+        <script>
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        colors: {
+                            primary: {
+                                50: "#eff6ff",
+                                100: "#dbeafe",
+                                200: "#bfdbfe",
+                                300: "#93c5fd",
+                                400: "#60a5fa",
+                                500: "#3b82f6",
+                                600: "#2563eb",
+                                700: "#1d4ed8",
+                                800: "#1e40af",
+                                900: "#1e3a8a",
+                                950: "#172554",
+                            },
+                        },
+                    },
+                },
+            };
+        </script>
+        <style>
+            .file-card {
+                transition: all 0.3s ease;
+            }
+            .file-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            }
+        </style>
+    </head>
+    <body class="bg-gray-900 text-gray-200 min-h-screen flex flex-col">
+        <div class="min-h-screen flex flex-col">
+            <nav
+                class="bg-primary-800 shadow-lg px-4 py-2 flex items-center justify-between"
+            >
+                <a href="#" class="font-bold text-xl text-white">hjCAD</a>
+                <div class="flex-grow mx-4">
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Search CAD files..."
+                        class="w-full px-3 py-1 rounded-md text-gray-800 bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button
+                        id="uploadBtn"
+                        class="text-white hover:text-gray-200"
+                        title="Upload"
+                    >
+                        <i class="fas fa-upload"></i>
+                    </button>
+                    <button
+                        id="darkModeToggle"
+                        class="text-white hover:text-gray-200"
+                        title="Toggle Dark Mode"
+                    >
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <div class="relative">
+                        <button
+                            id="profileBtn"
+                            class="text-white hover:text-gray-200"
+                            title="Profile"
+                        >
+                            <i class="fas fa-user-circle"></i>
+                        </button>
+                        <div
+                            id="profileDropdown"
+                            class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-10 hidden"
+                        >
+                            <div class="px-4 py-2 text-sm text-gray-300">
+                                <p class="font-semibold">
+                                    {{ user_info['name'] }}
+                                </p>
+                                <p class="text-xs">{{ user_info['email'] }}</p>
+                            </div>
+                            <a
+                                href="{{ url_for('logout') }}"
+                                class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                                >Logout</a
+                            >
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <main class="flex-grow container mx-auto px-4 py-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-100">
+                    Available CAD Files
+                </h2>
+                <div
+                    id="cadFilesList"
+                    class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+                >
+                    <!-- CAD files will be dynamically inserted here -->
+                </div>
+            </main>
+            <footer class="bg-gray-800 dark:bg-gray-900 text-white py-4">
+                <div class="container mx-auto px-4 text-center">
+                    <p>&copy; 2023 | hjCAD</p>
+                </div>
+            </footer>
+        </div>
+
+        <!-- Upload Modal -->
+        <div id="uploadModal" class="fixed z-10 inset-0 overflow-y-auto hidden">
+            <div
+                class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
+            >
+                <div
+                    class="fixed inset-0 transition-opacity"
+                    aria-hidden="true"
+                >
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
+                <span
+                    class="hidden sm:inline-block sm:align-middle sm:h-screen"
+                    aria-hidden="true"
+                    >&#8203;</span
+                >
+                <div
+                    class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+                >
+                    <div
+                        class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4"
+                    >
+                        <h3
+                            class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100"
+                        >
+                            Upload CAD File
+                        </h3>
+                        <div class="mt-2">
+                            <form id="uploadForm" enctype="multipart/form-data">
+                                <div class="mb-4">
+                                    <label
+                                        for="cad_file"
+                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                                        >Choose CAD file</label
+                                    >
+                                    <input
+                                        type="file"
+                                        name="cad_file"
+                                        id="cad_file"
+                                        accept=".stp,.step,.igs,.iges,.dxf,.dwg,.sldprt,.sldasm"
+                                        class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                    />
+                                </div>
+                                <div class="mb-4">
+                                    <label
+                                        for="description"
+                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                                        >Description</label
+                                    >
+                                    <textarea
+                                        id="description"
+                                        name="description"
+                                        rows="3"
+                                        class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                    ></textarea>
+                                </div>
+                                <div class="mb-4">
+                                    <label
+                                        for="tags"
+                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                                        >Tags (comma-separated)</label
+                                    >
+                                    <input
+                                        type="text"
+                                        name="tags"
+                                        id="tags"
+                                        class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                    />
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse"
+                    >
+                        <button
+                            type="button"
+                            id="submitUpload"
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm"
+                        >
+                            Upload
+                        </button>
+                        <button
+                            type="button"
+                            id="cancelUpload"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const allowedExtensions = [
+                "stp",
+                "step",
+                "igs",
+                "iges",
+                "dxf",
+                "dwg",
+                "sldprt",
+                "sldasm",
+            ];
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const uploadBtn = document.getElementById("uploadBtn");
+                const uploadModal = document.getElementById("uploadModal");
+                const submitUpload = document.getElementById("submitUpload");
+                const cancelUpload = document.getElementById("cancelUpload");
+                const darkModeToggle =
+                    document.getElementById("darkModeToggle");
+                const profileBtn = document.getElementById("profileBtn");
+                const profileDropdown =
+                    document.getElementById("profileDropdown");
+                const searchInput = document.getElementById("searchInput");
+
+                uploadBtn.addEventListener("click", () =>
+                    uploadModal.classList.remove("hidden"),
+                );
+                cancelUpload.addEventListener("click", () =>
+                    uploadModal.classList.add("hidden"),
+                );
+
+                submitUpload.addEventListener("click", function () {
+                    const formData = new FormData(
+                        document.getElementById("uploadForm"),
+                    );
+                    fetch("/upload", {
+                        method: "POST",
+                        body: formData,
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            if (data.success) {
+                                Swal.fire("Success", data.message, "success");
+                                uploadModal.classList.add("hidden");
+                                fetchCADFiles();
+                            } else {
+                                Swal.fire("Error", data.message, "error");
+                            }
+                        })
+                        .catch((error) => {
+                            console.error("Error:", error);
+                            Swal.fire(
+                                "Error",
+                                "An error occurred while uploading the file.",
+                                "error",
+                            );
+                        });
+                });
+
+                darkModeToggle.addEventListener("click", toggleDarkMode);
+
+                profileBtn.addEventListener("click", function (event) {
+                    event.stopPropagation();
+                    profileDropdown.classList.toggle("hidden");
+                });
+
+                document.addEventListener("click", function (event) {
+                    if (
+                        !profileDropdown.contains(event.target) &&
+                        event.target !== profileBtn
+                    ) {
+                        profileDropdown.classList.add("hidden");
+                    }
+                });
+
+                searchInput.addEventListener(
+                    "input",
+                    debounce(function (e) {
+                        const searchTerm = e.target.value;
+                        if (searchTerm.length > 2) {
+                            fetch(`/search?q=${encodeURIComponent(searchTerm)}`)
+                                .then((response) => response.json())
+                                .then((data) => {
+                                    renderCADFiles(data);
+                                })
+                                .catch((error) =>
+                                    console.error("Error:", error),
+                                );
+                        } else if (searchTerm.length === 0) {
+                            fetchCADFiles();
+                        }
+                    }, 300),
+                );
+
+                fetchCADFiles();
+            });
+
+            function fetchCADFiles() {
+                fetch("/get_cad_files")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        renderCADFiles(data);
+                    })
+                    .catch((error) =>
+                        console.error("Error fetching CAD files:", error),
+                    );
+            }
+
+            function renderCADFiles(files) {
+                const cadFilesList = document.getElementById("cadFilesList");
+                cadFilesList.innerHTML = "";
+
+                if (files.length === 0) {
+                    cadFilesList.innerHTML =
+                        '<p class="col-span-full text-center text-gray-500 dark:text-gray-400">No CAD files available.</p>';
+                    return;
+                }
+
+                files.forEach((file, index) => {
+                    const fileElement = createFileElement(file, index);
+                    cadFilesList.appendChild(fileElement);
+                });
+
+                initializePreviews(files);
+            }
+
+            function createFileElement(file, index) {
+                const div = document.createElement("div");
+                div.className =
+                    "file-card bg-gray-800 rounded-lg shadow-md overflow-hidden";
+                div.innerHTML = `
+                <div class="aspect-w-16 aspect-h-9">
+                    <div id="preview-${index}" class="w-full h-full"></div>
+                </div>
+                <div class="p-3">
+                    <h3 class="text-base font-semibold text-gray-100 truncate">${file.original_filename}</h3>
+                    <p class="text-xs text-gray-400 mt-1 truncate">${file.description}</p>
+                    <div class="mt-2 flex items-center text-xs text-gray-500">
+                        <i class="fas fa-tag mr-1"></i>
+                        <span class="truncate">${file.tags.join(", ")}</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-500">
+                        ${file.uploader} | ${new Date(file.upload_date).toLocaleDateString()}
+                    </div>
+                    <div class="mt-1 text-xs text-gray-500">
+                        ${formatFileSize(file.file_size)}
+                    </div>
+                    <div class="mt-2 flex justify-between items-center">
+                        <div class="flex items-center space-x-2">
+                            <button onclick="likeFile('${file.filename}')" class="text-gray-400 hover:text-red-500">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                            <span id="likes-${file.filename}" class="text-xs">${file.likes}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-comment text-gray-400"></i>
+                            <span class="text-xs">${file.comments.length}</span>
+                        </div>
+                    </div>
+                    <div class="mt-2 flex justify-between">
+                        <button onclick="downloadFile('${file.filename}')" class="text-xs px-2 py-1 bg-primary-700 hover:bg-primary-600 rounded">
+                            <i class="fas fa-download mr-1"></i>Download
+                        </button>
+                        <button onclick="deleteFile('${file.filename}')" class="text-xs px-2 py-1 bg-red-700 hover:bg-red-600 rounded">
+                            <i class="fas fa-trash-alt mr-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+                return div;
+            }
+
+            function formatFileSize(bytes) {
+                if (bytes === 0) return "0 Bytes";
+                const k = 1024;
+                const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return (
+                    parseFloat((bytes / Math.pow(k, i)).toFixed(2)) +
+                    " " +
+                    sizes[i]
+                );
+            }
+
+            function likeFile(filename) {
+                fetch(`/like/${filename}`, { method: "POST" })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success) {
+                            document.getElementById(
+                                `likes-${filename}`,
+                            ).textContent = data.likes;
+                        }
+                    })
+                    .catch((error) => console.error("Error:", error));
+            }
+
+            function downloadFile(filename) {
+                window.location.href = `/download/${filename}`;
+            }
+
+            function deleteFile(filename) {
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "You won't be able to revert this!",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#3085d6",
+                    cancelButtonColor: "#d33",
+                    confirmButtonText: "Yes, delete it!",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/delete/${filename}`, { method: "DELETE" })
+                            .then((response) => response.json())
+                            .then((data) => {
+                                if (data.success) {
+                                    Swal.fire(
+                                        "Deleted!",
+                                        data.message,
+                                        "success",
+                                    );
+                                    fetchCADFiles();
+                                } else {
+                                    Swal.fire("Error", data.message, "error");
+                                }
+                            })
+                            .catch((error) => {
+                                console.error("Error:", error);
+                                Swal.fire(
+                                    "Error",
+                                    "An error occurred while deleting the file.",
+                                    "error",
+                                );
+                            });
+                    }
+                });
+            }
+
+            function toggleDarkMode() {
+                document.documentElement.classList.toggle("dark");
+                localStorage.setItem(
+                    "color-theme",
+                    document.documentElement.classList.contains("dark")
+                        ? "dark"
+                        : "light",
+                );
+                updateDarkModeIcon();
+            }
+
+            function updateDarkModeIcon() {
+                const darkModeToggle =
+                    document.getElementById("darkModeToggle");
+                const isDarkMode =
+                    document.documentElement.classList.contains("dark");
+                darkModeToggle.innerHTML = isDarkMode
+                    ? '<i class="fas fa-sun"></i>'
+                    : '<i class="fas fa-moon"></i>';
+            }
+
+            function initializePreviews() {
+                const previews = document.querySelectorAll('[id^="preview-"]');
+                previews.forEach((preview) => {
+                    const scene = new THREE.Scene();
+                    const camera = new THREE.PerspectiveCamera(
+                        75,
+                        preview.clientWidth / preview.clientHeight,
+                        0.1,
+                        1000,
+                    );
+                    const renderer = new THREE.WebGLRenderer({
+                        antialias: true,
+                    });
+                    renderer.setSize(preview.clientWidth, preview.clientHeight);
+                    preview.appendChild(renderer.domElement);
+
+                    const geometry = new THREE.BoxGeometry();
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x00ff00,
+                    });
+                    const cube = new THREE.Mesh(geometry, material);
+                    scene.add(cube);
+
+                    const light = new THREE.PointLight(0xffffff, 1, 100);
+                    light.position.set(0, 0, 10);
+                    scene.add(light);
+
+                    camera.position.z = 5;
+
+                    function animate() {
+                        requestAnimationFrame(animate);
+                        cube.rotation.x += 0.01;
+                        cube.rotation.y += 0.01;
+                        renderer.render(scene, camera);
+                    }
+                    animate();
+                });
+            }
+
+            function debounce(func, wait) {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            }
+
+            // Set initial dark mode state
+            if (
+                localStorage.getItem("color-theme") === "dark" ||
+                (!("color-theme" in localStorage) &&
+                    window.matchMedia("(prefers-color-scheme: dark)").matches)
+            ) {
+                document.documentElement.classList.add("dark");
+            } else {
+                document.documentElement.classList.remove("dark");
+            }
+
+            // Update dark mode icon on page load
+            updateDarkModeIcon();
+
+            function initializePreviews(files) {
+                files.forEach((file, index) => {
+                    const previewElement = document.getElementById(
+                        `preview-${index}`,
+                    );
+                    const fileExtension = file.original_filename
+                        .split(".")
+                        .pop()
+                        .toLowerCase();
+
+                    if (
+                        [
+                            "stp",
+                            "step",
+                            "igs",
+                            "iges",
+                            "sldprt",
+                            "sldasm",
+                        ].includes(fileExtension)
+                    ) {
+                        initializeThreeJSPreview(previewElement, file.filename);
+                    } else if (["dxf", "dwg"].includes(fileExtension)) {
+                        initializePaperJSPreview(previewElement, file.filename);
+                    }
+                });
+            }
+
+            function initializeThreeJSPreview(element, filename) {
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(
+                    75,
+                    element.clientWidth / element.clientHeight,
+                    0.1,
+                    1000,
+                );
+                const renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(element.clientWidth, element.clientHeight);
+                element.appendChild(renderer.domElement);
+
+                // Load the 3D model
+                const loader = new THREE.STLLoader();
+                loader.load(
+                    `/get_file_content/${filename}`,
+                    function (geometry) {
+                        const material = new THREE.MeshPhongMaterial({
+                            color: 0x00ff00,
+                            specular: 0x111111,
+                            shininess: 200,
+                        });
+                        const mesh = new THREE.Mesh(geometry, material);
+                        scene.add(mesh);
+
+                        // Center the model
+                        const box = new THREE.Box3().setFromObject(mesh);
+                        const center = box.getCenter(new THREE.Vector3());
+                        mesh.position.sub(center);
+
+                        // Add lighting
+                        const ambientLight = new THREE.AmbientLight(0x404040);
+                        scene.add(ambientLight);
+
+                        const directionalLight = new THREE.DirectionalLight(
+                            0xffffff,
+                            0.5,
+                        );
+                        directionalLight.position.set(1, 1, 1);
+                        scene.add(directionalLight);
+
+                        camera.position.z = 5;
+
+                        function animate() {
+                            requestAnimationFrame(animate);
+                            mesh.rotation.x += 0.01;
+                            mesh.rotation.y += 0.01;
+                            renderer.render(scene, camera);
+                        }
+                        animate();
+                    },
+                );
+            }
+
+            function initializePaperJSPreview(element, filename) {
+                const canvas = document.createElement("canvas");
+                canvas.width = element.clientWidth;
+                canvas.height = element.clientHeight;
+                element.appendChild(canvas);
+
+                paper.setup(canvas);
+
+                fetch(`/get_file_content/${filename}`)
+                    .then((response) => response.text())
+                    .then((content) => {
+                        const parser = new DXFParser();
+                        const dxf = parser.parseSync(content);
+
+                        dxf.entities.forEach((entity) => {
+                            if (entity.type === "LINE") {
+                                const line = new paper.Path.Line(
+                                    new paper.Point(
+                                        entity.start.x,
+                                        entity.start.y,
+                                    ),
+                                    new paper.Point(entity.end.x, entity.end.y),
+                                );
+                                line.strokeColor = "white";
+                            } else if (entity.type === "CIRCLE") {
+                                const circle = new paper.Path.Circle(
+                                    new paper.Point(
+                                        entity.center.x,
+                                        entity.center.y,
+                                    ),
+                                    entity.radius,
+                                );
+                                circle.strokeColor = "white";
+                            } else if (entity.type === "ARC") {
+                                const center = new paper.Point(
+                                    entity.center.x,
+                                    entity.center.y,
+                                );
+                                const through = new paper.Point(
+                                    center.x +
+                                        entity.radius *
+                                            Math.cos(
+                                                (entity.startAngle * Math.PI) /
+                                                    180,
+                                            ),
+                                    center.y +
+                                        entity.radius *
+                                            Math.sin(
+                                                (entity.startAngle * Math.PI) /
+                                                    180,
+                                            ),
+                                );
+                                const to = new paper.Point(
+                                    center.x +
+                                        entity.radius *
+                                            Math.cos(
+                                                (entity.endAngle * Math.PI) /
+                                                    180,
+                                            ),
+                                    center.y +
+                                        entity.radius *
+                                            Math.sin(
+                                                (entity.endAngle * Math.PI) /
+                                                    180,
+                                            ),
+                                );
+                                const arc = new paper.Path.Arc(
+                                    center,
+                                    through,
+                                    to,
+                                );
+                                arc.strokeColor = "white";
+                            }
+                        });
+
+                        paper.view.center = new paper.Point(0, 0);
+                        paper.view.zoom = 0.9;
+                        paper.view.draw();
+                    });
+            }
+        </script>
+    </body>
+</html>
