@@ -2,14 +2,17 @@
 # hjCAD - Open Source CAD File Sharing Platform
 
 <p align="center">
-  <img src="https://your-image-url-here.com/hjcad-logo.png" alt="hjCAD Logo" width="200"/>
-</p>
-
-<p align="center">
   <a href="https://github.com/hemangjoshi37a/hjCAD/stargazers"><img src="https://img.shields.io/github/stars/hemangjoshi37a/hjCAD" alt="Stars"/></a>
   <a href="https://github.com/hemangjoshi37a/hjCAD/network/members"><img src="https://img.shields.io/github/forks/hemangjoshi37a/hjCAD" alt="Forks"/></a>
   <a href="https://github.com/hemangjoshi37a/hjCAD/blob/main/LICENSE"><img src="https://img.shields.io/github/license/hemangjoshi37a/hjCAD" alt="License"/></a>
 </p>
+
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/9db2ba8b-f47f-4829-9f66-e85308177789" alt="hjCAD Screenshot">
+</p>
+
+
 
 hjCAD is a cutting-edge, free, and open-source alternative to GrabCAD, revolutionizing the way engineers and designers collaborate on 3D/2D design files. Our platform empowers the CAD community with seamless file sharing and robust collaboration tools.
 
